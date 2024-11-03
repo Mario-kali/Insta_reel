@@ -18,7 +18,7 @@ def initialize_driver():
     global driver, driver_initialized
     if not driver_initialized:
         chrome_options = Options()
-        # chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--headless=new")
         chrome_options.add_argument(f'--proxy-server={proxy_host}:{proxy_port}')
         driver = uc.Chrome(options=chrome_options)
         driver_initialized = True
@@ -48,7 +48,7 @@ def get_reels_data(reel_username="barcelona", target_reel_count=100):
             session.cookies.set(cookie['name'], cookie['value'])
             if cookie['name'] == 'csrftoken':
                 csrf_token = cookie['value']  # Retrieve CSRF token
-
+        driver.save_screenshot("2.png")
         if not csrf_token:
             print("CSRF token not found in cookies")
             return None
@@ -92,7 +92,7 @@ def get_reels_data(reel_username="barcelona", target_reel_count=100):
                 body["max_id"] = max_id
 
             response = session.post(reels_url, headers=headers, data=body)
-            driver.save_screenshot("screenshot.png")
+            
 
             # print ("response: ", response.json())
             if response.status_code == 200:
