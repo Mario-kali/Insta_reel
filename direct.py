@@ -17,7 +17,7 @@ def initialize_driver():
     global driver, driver_initialized
     if not driver_initialized:
         chrome_options = Options()
-        # chrome_options.add_argument("--headless=new")
+        chrome_options.add_argument("--headless=new")
         chrome_options.add_argument(f'--proxy-server=5.161.202.98:823')
         driver = uc.Chrome(options=chrome_options)
         driver_initialized = True
