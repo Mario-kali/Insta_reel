@@ -28,4 +28,6 @@ def get_user_id_from_username(username):
         print("Failed to retrieve page.")
     return None
 
-
+username = "fcbarcelona"
+user_id = get_user_id_from_username(username)
+print(f"User ID for {username}: {user_id}")

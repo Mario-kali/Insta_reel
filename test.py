@@ -3,8 +3,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
 import time
 import requests
+import re
 import json
-from id import get_user_id_from_username
 
 # Global variable for the driver, initialized once
 driver = None
@@ -23,22 +23,30 @@ def initialize_driver():
         driver = uc.Chrome(options=chrome_options)
         driver_initialized = True
 
-
-
-def get_reels_data(reel_username="barcelona", target_reel_count=100):
+def get_reels_data(reel_username="memezar", target_reel_count=100):
     initialize_driver()  # Ensure the driver is initialized
     try:
         reels_url = "https://www.instagram.com/api/v1/clips/user/"
         driver.get(f"https://www.instagram.com/{reel_username}/reels/")
         time.sleep(5)
 
-        # Check if a dialog element is present and delete it if found
+        # Check if a dialog element is present and delete its main parent if found
         try:
             dialog_element = driver.find_element(By.XPATH, '//*[@role="dialog"]')
             driver.execute_script("arguments[0].parentNode.removeChild(arguments[0]);", dialog_element)
             print("Dialog element removed.")
         except Exception:
             print("No dialog element found, continuing...")
+
+        # Extract user ID directly from the page HTML
+        page_source = driver.page_source
+        user_id_match = re.search(r'"profilePage_([0-9]+)"', page_source)
+        if user_id_match:
+            user_id = user_id_match.group(1)
+            print(f"User ID for {reel_username}: {user_id}")
+        else:
+            print("User ID not found on the page.")
+            return None
 
         # Initialize session and add cookies
         cookies = driver.get_cookies()
@@ -52,8 +60,6 @@ def get_reels_data(reel_username="barcelona", target_reel_count=100):
         if not csrf_token:
             print("CSRF token not found in cookies")
             return None
-
-        # time.sleep(5000)
 
         headers = {
             "accept": "*/*",
@@ -80,8 +86,7 @@ def get_reels_data(reel_username="barcelona", target_reel_count=100):
 
         max_id = None
         reels = []
-        user_id = get_user_id_from_username(reel_username)
-        print ("userID is: ",user_id)
+        
         while len(reels) < target_reel_count:
             body = {
                 "include_feed_video": "true",
@@ -92,9 +97,8 @@ def get_reels_data(reel_username="barcelona", target_reel_count=100):
                 body["max_id"] = max_id
 
             response = session.post(reels_url, headers=headers, data=body)
-            
 
-            # print ("response: ", response.json())
+            print("Response:", response.json())
             if response.status_code == 200:
                 reels_data = response.json()
                 items = reels_data.get("items", [])
@@ -127,7 +131,3 @@ def get_reels_data(reel_username="barcelona", target_reel_count=100):
     finally:
         if driver:
             driver.quit()
-
-# Run the script and fetch reels for testing
-reels_data = get_reels_data()
-print(json.dumps(reels_data, indent=4))
