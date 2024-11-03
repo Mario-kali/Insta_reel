@@ -73,7 +73,7 @@ def get_reels_data(reel_username="realmadrid", target_reel_count=100):
         max_id = None
         reels = []
         user_id = get_user_id_from_username(reel_username)
-
+        print ("userID is: ",user_id)
         while len(reels) < target_reel_count:
             body = {
                 "include_feed_video": "true",
@@ -84,7 +84,7 @@ def get_reels_data(reel_username="realmadrid", target_reel_count=100):
                 body["max_id"] = max_id
 
             response = session.post(reels_url, headers=headers, data=body)
-
+            print ("response: ", response)
             if response.status_code == 200:
                 reels_data = response.json()
                 items = reels_data.get("items", [])
