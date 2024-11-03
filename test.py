@@ -12,7 +12,7 @@ driver = None
 driver_initialized = False
 
 # Proxy details (replace with your actual proxy if needed)
-proxy_host = "139.99.181.179"
+proxy_host = "103.88.235.25"
 proxy_port = "823"
 
 def initialize_driver():
@@ -53,7 +53,7 @@ def get_dynamic_headers(driver, csrf_token):
     }
     return headers
 
-def get_reels_data(reel_username="hoodville", target_reel_count=100):
+def get_reels_data(reel_username="memezar", target_reel_count=100):
     initialize_driver()  # Ensure the driver is initialized
     try:
         reels_url = "https://www.instagram.com/api/v1/clips/user/"
@@ -76,6 +76,8 @@ def get_reels_data(reel_username="hoodville", target_reel_count=100):
             print(f"User ID for {reel_username}: {user_id}")
         else:
             print("User ID not found on the page.")
+            with open("page_source.html", "w", encoding='utf-8') as f:
+                f.write(driver.page_source)
             return None
 
         # Initialize session and add cookies
