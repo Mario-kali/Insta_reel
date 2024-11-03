@@ -5,25 +5,55 @@ import time
 import requests
 import re
 import json
+import platform
 
 # Global variable for the driver, initialized once
 driver = None
 driver_initialized = False
 
 # Proxy details (replace with your actual proxy if needed)
-proxy_host = "144.76.124.83"
+proxy_host = "139.99.181.179"
 proxy_port = "823"
 
 def initialize_driver():
     global driver, driver_initialized
     if not driver_initialized:
         chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
+        # chrome_options.add_argument("--headless=new")
         chrome_options.add_argument(f'--proxy-server={proxy_host}:{proxy_port}')
         driver = uc.Chrome(options=chrome_options)
         driver_initialized = True
 
-def get_reels_data(reel_username="memezar", target_reel_count=100):
+def get_dynamic_headers(driver, csrf_token):
+    # Use JavaScript to retrieve browser and OS details for dynamic headers
+    user_agent = driver.execute_script("return navigator.userAgent;")
+    sec_ua = driver.execute_script("return navigator.userAgentData.brands.map(b => `${b.brand};v=\"${b.version}\"`).join(', ');")
+    sec_platform = platform.system().lower()  # e.g., 'darwin', 'linux', or 'windows'
+
+    headers = {
+        "accept": "*/*",
+        "accept-language": "en-GB,en;q=0.9",
+        "content-type": "application/x-www-form-urlencoded",
+        "priority": "u=1, i",
+        "sec-ch-prefers-color-scheme": "dark",
+        "sec-ch-ua": f"\"{sec_ua}\"",
+        "sec-ch-ua-full-version-list": f"\"{user_agent}\"",
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-model": "\"\"",
+        "sec-ch-ua-platform": f"\"{sec_platform}\"",
+        "sec-fetch-dest": "empty",
+        "sec-fetch-mode": "cors",
+        "sec-fetch-site": "same-origin",
+        "x-asbd-id": "129477",
+        "x-csrftoken": csrf_token,
+        "x-ig-app-id": "936619743392459",
+        "x-ig-www-claim": "0",
+        "x-instagram-ajax": "1017905023",
+        "x-requested-with": "XMLHttpRequest"
+    }
+    return headers
+
+def get_reels_data(reel_username="hoodville", target_reel_count=100):
     initialize_driver()  # Ensure the driver is initialized
     try:
         reels_url = "https://www.instagram.com/api/v1/clips/user/"
@@ -56,33 +86,12 @@ def get_reels_data(reel_username="memezar", target_reel_count=100):
             session.cookies.set(cookie['name'], cookie['value'])
             if cookie['name'] == 'csrftoken':
                 csrf_token = cookie['value']  # Retrieve CSRF token
-        driver.save_screenshot("2.png")
+        
         if not csrf_token:
             print("CSRF token not found in cookies")
             return None
 
-        headers = {
-            "accept": "*/*",
-            "accept-language": "en-GB,en;q=0.9",
-            "content-type": "application/x-www-form-urlencoded",
-            "priority": "u=1, i",
-            "sec-ch-prefers-color-scheme": "dark",
-            "sec-ch-ua": "\"Chromium\";v=\"130\", \"Google Chrome\";v=\"130\", \"Not?A_Brand\";v=\"99\"",
-            "sec-ch-ua-full-version-list": "\"Chromium\";v=\"130.0.6723.92\", \"Google Chrome\";v=\"130.0.6723.92\", \"Not?A_Brand\";v=\"99.0.0.0\"",
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-model": "\"\"",
-            "sec-ch-ua-platform": "\"macOS\"",
-            "sec-ch-ua-platform-version": "\"15.1.0\"",
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-origin",
-            "x-asbd-id": "129477",
-            "x-csrftoken": csrf_token,
-            "x-ig-app-id": "936619743392459",
-            "x-ig-www-claim": "0",
-            "x-instagram-ajax": "1017905023",
-            "x-requested-with": "XMLHttpRequest"
-        }
+        headers = get_dynamic_headers(driver, csrf_token)
 
         max_id = None
         reels = []
@@ -131,3 +140,7 @@ def get_reels_data(reel_username="memezar", target_reel_count=100):
     finally:
         if driver:
             driver.quit()
+
+
+reels_data = get_reels_data()
+print(json.dumps(reels_data, indent=4))
