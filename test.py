@@ -132,6 +132,7 @@ def get_reels_data(reel_username="memezar", target_reel_count=100):
                 print("Failed to fetch reels data.")
                 break
 
+
         reels.sort(key=lambda x: x["viewcount"], reverse=True)
         return reels[:target_reel_count]
 

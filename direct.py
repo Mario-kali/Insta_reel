@@ -133,7 +133,7 @@ def get_reels_data(reel_username, target_reel_count=100):
 
                 else:
                     print("Failed to fetch reels data with the current proxy.")
-                    break
+                    raise Exception
 
             reels.sort(key=lambda x: x["viewcount"] if x["viewcount"] is not None else 0, reverse=True)
             driver.quit()

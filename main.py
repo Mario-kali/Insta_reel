@@ -27,6 +27,8 @@ def initialize_driver():
         driver = uc.Chrome(options=chrome_options)
         driver_initialized = True
 
+
+
 def instagram_login(username, password):
     try:
         driver.get("https://www.instagram.com/accounts/login/?next=%2Flogin%2F&source=desktop_nav")
