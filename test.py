@@ -4,35 +4,41 @@ from selenium.webdriver.chrome.options import Options
 import time
 import requests
 import json
+from id import get_user_id_from_username
 
 # Global variable for the driver, initialized once
 driver = None
 driver_initialized = False
 
 # Proxy details (replace with your actual proxy if needed)
-proxy_host = "5.161.202.98"
+proxy_host = "144.76.124.83"
 proxy_port = "823"
 
 def initialize_driver():
     global driver, driver_initialized
     if not driver_initialized:
         chrome_options = Options()
-        chrome_options.add_argument("--headless=new")
+        # chrome_options.add_argument("--headless=new")
         chrome_options.add_argument(f'--proxy-server={proxy_host}:{proxy_port}')
         driver = uc.Chrome(options=chrome_options)
         driver_initialized = True
 
-def get_user_id_from_username(username):
-    # Placeholder for the actual method to fetch the user ID
-    # In a real setup, this would query Instagram's API or scrape the profile page
-    return "290023231"  # Replace with actual user ID logic
 
-def get_reels_data(reel_username="realmadrid", target_reel_count=100):
+
+def get_reels_data(reel_username="barcelona", target_reel_count=100):
     initialize_driver()  # Ensure the driver is initialized
     try:
         reels_url = "https://www.instagram.com/api/v1/clips/user/"
         driver.get(f"https://www.instagram.com/{reel_username}/reels/")
         time.sleep(5)
+
+        # Check if a dialog element is present and delete it if found
+        try:
+            dialog_element = driver.find_element(By.XPATH, '//*[@role="dialog"]')
+            driver.execute_script("arguments[0].parentNode.removeChild(arguments[0]);", dialog_element)
+            print("Dialog element removed.")
+        except Exception:
+            print("No dialog element found, continuing...")
 
         # Initialize session and add cookies
         cookies = driver.get_cookies()
@@ -46,6 +52,8 @@ def get_reels_data(reel_username="realmadrid", target_reel_count=100):
         if not csrf_token:
             print("CSRF token not found in cookies")
             return None
+
+        # time.sleep(5000)
 
         headers = {
             "accept": "*/*",
@@ -86,7 +94,7 @@ def get_reels_data(reel_username="realmadrid", target_reel_count=100):
             response = session.post(reels_url, headers=headers, data=body)
             driver.save_screenshot("screenshot.png")
 
-            print ("response: ", response.json())
+            # print ("response: ", response.json())
             if response.status_code == 200:
                 reels_data = response.json()
                 items = reels_data.get("items", [])
