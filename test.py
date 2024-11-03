@@ -84,7 +84,9 @@ def get_reels_data(reel_username="realmadrid", target_reel_count=100):
                 body["max_id"] = max_id
 
             response = session.post(reels_url, headers=headers, data=body)
-            print ("response: ", response)
+            driver.save_screenshot("screenshot.png")
+
+            print ("response: ", response.json())
             if response.status_code == 200:
                 reels_data = response.json()
                 items = reels_data.get("items", [])
