@@ -25,7 +25,7 @@ proxy_port = "823"  # Assuming all proxies use the same port
 
 def initialize_driver(proxy_host):
     chrome_options = Options()
-    chrome_options.add_argument("--headless=new") 
+    # chrome_options.add_argument("--headless=new") 
     chrome_options.add_argument(f'--proxy-server={proxy_host}:{proxy_port}')
     driver = uc.Chrome(options=chrome_options)
     print(f"Initialized driver with proxy: {proxy_host}:{proxy_port}")
@@ -62,12 +62,12 @@ def get_dynamic_headers(driver, csrf_token):
 def get_reels_data(reel_username, target_reel_count=100):
     for proxy_host in proxies:
         try:
-            driver = initialize_driver(proxy_host)  # Initialize driver with the current proxy
+            driver = initialize_driver(proxy_host)
             reels_url = "https://www.instagram.com/api/v1/clips/user/"
             driver.get(f"https://www.instagram.com/{reel_username}/reels/")
             time.sleep(5)
 
-            # Check if a dialog element is present and delete it
+            # Attempt to remove dialog if present
             try:
                 dialog_element = driver.find_element(By.XPATH, '//*[@role="dialog"]')
                 driver.execute_script("arguments[0].parentNode.removeChild(arguments[0]);", dialog_element)
@@ -75,7 +75,7 @@ def get_reels_data(reel_username, target_reel_count=100):
             except Exception:
                 print("No dialog element found, continuing...")
 
-            # Extract user ID directly from the page HTML
+            # Extract user ID from page HTML
             page_source = driver.page_source
             user_id_match = re.search(r'"profilePage_([0-9]+)"', page_source)
             if user_id_match:
@@ -83,7 +83,7 @@ def get_reels_data(reel_username, target_reel_count=100):
                 print(f"User ID for {reel_username}: {user_id}")
             else:
                 print("User ID not found on the page.")
-                raise Exception 
+                raise Exception("User ID not found")
 
             # Initialize session and add cookies
             cookies = driver.get_cookies()
@@ -96,12 +96,37 @@ def get_reels_data(reel_username, target_reel_count=100):
 
             if not csrf_token:
                 print("CSRF token not found in cookies")
-                raise Exception
+                raise Exception("CSRF token not found")
 
-            headers = get_dynamic_headers(driver, csrf_token)
+            # Static headers based on provided request
+            headers = {
+                "accept": "*/*",
+                "accept-language": "en-US,en;q=0.9",
+                "content-type": "application/x-www-form-urlencoded",
+                "priority": "u=1, i",
+                "sec-ch-prefers-color-scheme": "light",
+                "sec-ch-ua": "\"Chromium\";v=\"130\", \"Google Chrome\";v=\"130\", \"Not?A_Brand\";v=\"99\"",
+                "sec-ch-ua-full-version-list": "\"Chromium\";v=\"130.0.6723.91\", \"Google Chrome\";v=\"130.0.6723.91\", \"Not?A_Brand\";v=\"99.0.0.0\"",
+                "sec-ch-ua-mobile": "?0",
+                "sec-ch-ua-model": "\"\"",
+                "sec-ch-ua-platform": "\"Linux\"",
+                "sec-ch-ua-platform-version": "\"5.15.0\"",
+                "sec-fetch-dest": "empty",
+                "sec-fetch-mode": "cors",
+                "sec-fetch-site": "same-origin",
+                "x-asbd-id": "129477",
+                "x-csrftoken": csrf_token,
+                "x-ig-app-id": "936619743392459",
+                "x-ig-www-claim": "0",
+                "x-instagram-ajax": "1017912114",
+                "x-requested-with": "XMLHttpRequest",
+                "x-web-device-id": "90775CD2-2724-4FFE-8282-74A3B47BED05"
+            }
+
             max_id = None
             reels = []
-            print ("Reel count: ", len(reels)," ",target_reel_count)
+
+            # Main loop for fetching reels
             while len(reels) < target_reel_count:
                 body = {
                     "include_feed_video": "true",
@@ -110,7 +135,8 @@ def get_reels_data(reel_username, target_reel_count=100):
                 }
                 if max_id:
                     body["max_id"] = max_id
-                 # Print the entire request for debugging
+
+                # Print request details for debugging
                 print("=== Request Details ===")
                 print("URL:", reels_url)
                 print("Headers:", headers)
@@ -118,17 +144,10 @@ def get_reels_data(reel_username, target_reel_count=100):
                 print("Body:", body)
                 print("Proxy in use:", proxy_host)
                 print("=======================")
+
                 response = session.post(reels_url, headers=headers, data=body)
-                print (response.status_code, response.json())
-                # Retry with exponential backoff if rate-limited
-                if response.status_code != 200:
-                    for i in range(1, 4):  # Retry 3 times
-                        print(f"Retrying in {2 ** i} seconds...")
-                        time.sleep(2 ** i)
-                        response = session.post(reels_url, headers=headers, data=body)
-                        print (response.status_code, response.json())
-                        if response.status_code == 200:
-                            break
+                print(response.status_code, response.json())
+
                 if response.status_code == 200:
                     reels_data = response.json()
                     items = reels_data.get("items", [])
@@ -163,10 +182,8 @@ def get_reels_data(reel_username, target_reel_count=100):
                 f.write(driver.page_source)  # Save page source for debugging
             driver.quit()  # Ensure driver quits if there's an error and we retry
 
-    # If all proxies fail, return None
     print("All proxies failed.")
     return None
-
 @app.route('/scrape_reels', methods=['POST'])
 def scrape_reels():
     data = request.json
