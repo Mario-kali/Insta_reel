@@ -116,12 +116,15 @@ def get_reels_data(reel_username, target_reel_count=100):
                 # Convert headers to curl format
                 curl_headers = [f"-H '{key}: {value}'" for key, value in headers.items()]
 
-                # Prepare the curl command
+                # Rotate to the next proxy for the request
+                next_proxy = proxies[(proxies.index(proxy_host) + 1) % len(proxies)]
+
+                # Prepare the curl command with the next proxy
                 curl_command = [
-                    "curl", "-X", "POST", f"{reels_url}", 
-                    "-x", f"http://{proxy_host}:{proxy_port}", 
+                    "curl", "-X", "POST", reels_url,
+                    "-x", f"http://{next_proxy}:{proxy_port}",
                     *curl_headers,
-                    "-b", cookie_str.strip("; "), 
+                    "-b", cookie_str.strip("; "),
                     "--data", body_data
                 ]
 
@@ -164,14 +167,15 @@ def get_reels_data(reel_username, target_reel_count=100):
 
         except Exception as e:
             print(f"Error with proxy {proxy_host}: {e}")
-            print("Traceback details:", traceback.format_exc())  # Print detailed traceback with line numbers
-            driver.save_screenshot("error.png")  # Save a screenshot of the error state
+            print("Traceback details:", traceback.format_exc())
+            driver.save_screenshot("error.png")
             with open("page_source.html", "w", encoding='utf-8') as f:
-                f.write(driver.page_source)  # Save page source for debugging
-            driver.quit()  # Ensure driver quits if there's an error and we retry
+                f.write(driver.page_source)
+            driver.quit()
 
     print("All proxies failed.")
     return None
+
 @app.route('/scrape_reels', methods=['POST'])
 def scrape_reels():
     data = request.json
