@@ -31,6 +31,17 @@ def initialize_driver(proxy_host):
     print(f"Initialized driver with proxy: {proxy_host}:{proxy_port}")
     return driver
 
+def close_dialog(driver):
+    try:
+        # Try to find and click the 'Close' button
+        close_button = driver.find_element(By.XPATH, '//*[@aria-label="Close"]')
+        close_button.click()
+        print("Dialog closed using 'Close' button.")
+    except Exception:
+        # If 'Close' button is not found, click outside the dialog
+        print("Close button not found. Attempting to click outside the dialog.")
+        driver.execute_script("document.body.click();")
+
 
 def get_reels_data(reel_username, target_reel_count=100):
     for proxy_host in proxies:
@@ -40,13 +51,9 @@ def get_reels_data(reel_username, target_reel_count=100):
             driver.get(f"https://www.instagram.com/{reel_username}/reels/")
             time.sleep(5)
 
-            # Attempt to remove dialog if present
-            try:
-                dialog_element = driver.find_element(By.XPATH, '//*[@role="dialog"]')
-                driver.execute_script("arguments[0].parentNode.removeChild(arguments[0]);", dialog_element)
-                print("Dialog element removed.")
-            except Exception:
-                print("No dialog element found, continuing...")
+            time.sleep(2)
+            close_dialog(driver)
+            time.sleep(4)
 
             # Extract user ID from page HTML
             page_source = driver.page_source
@@ -59,7 +66,7 @@ def get_reels_data(reel_username, target_reel_count=100):
                 raise Exception("User ID not found")
 
             # Initialize session and add cookies
-            time.sleep(20)
+
             cookies = driver.get_cookies()
             session = requests.Session()
             csrf_token = None
