@@ -16,7 +16,7 @@ app = Flask(__name__)
 
 # List of proxy IPs to cycle through
 proxies = [
-    # "5.78.64.26",
+    "5.78.64.26",
     "5.161.202.98",
     "45.250.255.245",
     "103.88.235.25",
@@ -82,7 +82,7 @@ def get_reels_data(reel_username, scroll_count=20):
             for _ in range(scroll_count):
                 # Scroll down
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(7)
+                time.sleep(3)
 
                 # Check for dialog again in case it reappears
                 close_dialog(driver)
@@ -107,7 +107,8 @@ def get_reels_data(reel_username, scroll_count=20):
                                 raw_file.write(request.response.body)
                             print(f"Raw response saved to {raw_file_path}")
 
-            driver.quit()
+            if (len(captured_requests)<=1):
+                raise Exception
 
             # Process captured requests if any
             reels = []
