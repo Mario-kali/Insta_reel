@@ -31,33 +31,6 @@ def initialize_driver(proxy_host):
     print(f"Initialized driver with proxy: {proxy_host}:{proxy_port}")
     return driver
 
-def get_dynamic_headers(driver, csrf_token):
-    user_agent = driver.execute_script("return navigator.userAgent;")
-    sec_ua = driver.execute_script("return navigator.userAgentData.brands.map(b => `${b.brand};v=\"${b.version}\"`).join(', ');")
-    sec_platform = platform.system().lower()
-
-    headers = {
-        "accept": "*/*",
-        "accept-language": "en-GB,en;q=0.9",
-        "content-type": "application/x-www-form-urlencoded",
-        "priority": "u=1, i",
-        "sec-ch-prefers-color-scheme": "dark",
-        "sec-ch-ua": f"\"{sec_ua}\"",
-        "sec-ch-ua-full-version-list": f"\"{user_agent}\"",
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-model": "\"\"",
-        "sec-ch-ua-platform": "darwin",
-        "sec-fetch-dest": "empty",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-site": "same-origin",
-        "x-asbd-id": "129477",
-        "x-csrftoken": csrf_token,
-        "x-ig-app-id": "936619743392459",
-        "x-ig-www-claim": "0",
-        "x-instagram-ajax": "1017905023",
-        "x-requested-with": "XMLHttpRequest"
-    }
-    return headers
 
 def get_reels_data(reel_username, target_reel_count=100):
     for proxy_host in proxies:
@@ -86,6 +59,7 @@ def get_reels_data(reel_username, target_reel_count=100):
                 raise Exception("User ID not found")
 
             # Initialize session and add cookies
+            time.sleep(20)
             cookies = driver.get_cookies()
             session = requests.Session()
             csrf_token = None
