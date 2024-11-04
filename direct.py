@@ -28,7 +28,7 @@ proxy_port = "823"  # Assuming all proxies use the same port
 def initialize_driver(proxy_host):
     chrome_options = Options()
     # chrome_options.add_argument("--headless=new") 
-    options.add_argument("--start-maximized")
+    chrome_options.add_argument("--start-maximized")
     chrome_options.add_argument(f'--proxy-server={proxy_host}:{proxy_port}')
     driver = uc.Chrome(options=chrome_options)
     print(f"Initialized driver with proxy: {proxy_host}:{proxy_port}")
