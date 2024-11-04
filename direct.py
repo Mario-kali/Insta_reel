@@ -58,8 +58,9 @@ def capture_user_requests():
     return requests_data
 def get_reels_data(reel_username, scroll_count=20):
     for proxy_host in proxies:
+        driver = initialize_driver(proxy_host)
         try:
-            driver = initialize_driver(proxy_host)
+            
             driver.get(f"https://www.instagram.com/{reel_username}/reels/")
             time.sleep(5)
 
