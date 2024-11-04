@@ -9,6 +9,7 @@ import json
 import re
 import platform
 import subprocess
+from selenium.webdriver.common.action_chains import ActionChains
 
 app = Flask(__name__)
 
@@ -27,6 +28,7 @@ proxy_port = "823"  # Assuming all proxies use the same port
 def initialize_driver(proxy_host):
     chrome_options = Options()
     # chrome_options.add_argument("--headless=new") 
+    options.add_argument("--start-maximized")
     chrome_options.add_argument(f'--proxy-server={proxy_host}:{proxy_port}')
     driver = uc.Chrome(options=chrome_options)
     print(f"Initialized driver with proxy: {proxy_host}:{proxy_port}")
@@ -43,127 +45,62 @@ def close_dialog(driver):
         print("Close button not found. Attempting to click outside the dialog.")
         driver.execute_script("document.body.click();")
 
-
-def get_reels_data(reel_username, target_reel_count=100):
+def capture_user_requests():
+    requests_data = []
+    for request in driver.requests:
+        if 'clips/user/' in request.url and request.response:
+            # Ensure the request matches the desired URL and has a response
+            try:
+                response_data = request.response.body.decode('utf-8')
+                requests_data.append(response_data)
+            except Exception as e:
+                print("Error decoding response:", e)
+    return requests_data
+def get_reels_data(reel_username, scroll_count=20):
     for proxy_host in proxies:
         try:
             driver = initialize_driver(proxy_host)
-            reels_url = "https://www.instagram.com/api/v1/clips/user/"
             driver.get(f"https://www.instagram.com/{reel_username}/reels/")
             time.sleep(5)
 
-            time.sleep(2)
             close_dialog(driver)
-            time.sleep(4)
+            time.sleep(2)
 
-            # Extract user ID from page HTML
-            page_source = driver.page_source
-            user_id_match = re.search(r'"profilePage_([0-9]+)"', page_source)
-            if user_id_match:
-                user_id = user_id_match.group(1)
-                print(f"User ID for {reel_username}: {user_id}")
-            else:
-                print("User ID not found on the page.")
-                raise Exception("User ID not found")
+            # Scroll and capture requests
+            captured_requests = []
+            action = ActionChains(driver)
 
-            # Collect cookies for curl command
-            cookies = driver.get_cookies()
-            csrf_token = None
-            cookie_str = ""
-            for cookie in cookies:
-                cookie_str += f"{cookie['name']}={cookie['value']}; "
-                if cookie['name'] == 'csrftoken':
-                    csrf_token = cookie['value']
+            for _ in range(scroll_count):
+                # Scroll down
+                driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                time.sleep(3)
 
-            if not csrf_token:
-                print("CSRF token not found in cookies")
-                raise Exception("CSRF token not found")
+                # Check for dialog again in case it reappears
+                close_dialog(driver)
 
-            # Static headers based on provided request
-            headers = {
-                "accept": "*/*",
-                "accept-language": "en-US,en;q=0.9",
-                "content-type": "application/x-www-form-urlencoded",
-                "priority": "u=1, i",
-                "sec-ch-prefers-color-scheme": "light",
-                "sec-ch-ua": "\"Chromium\";v=\"130\", \"Google Chrome\";v=\"130\", \"Not?A_Brand\";v=\"99\"",
-                "sec-ch-ua-full-version-list": "\"Chromium\";v=\"130.0.6723.91\", \"Google Chrome\";v=\"130.0.6723.91\", \"Not?A_Brand\";v=\"99.0.0.0\"",
-                "sec-ch-ua-mobile": "?0",
-                "sec-ch-ua-model": "\"\"",
-                "sec-ch-ua-platform": "\"Linux\"",
-                "sec-ch-ua-platform-version": "\"5.15.0\"",
-                "sec-fetch-dest": "empty",
-                "sec-fetch-mode": "cors",
-                "sec-fetch-site": "same-origin",
-                "x-asbd-id": "129477",
-                "x-csrftoken": csrf_token,
-                "x-ig-app-id": "936619743392459",
-                "x-ig-www-claim": "0",
-                "x-instagram-ajax": "1017912114",
-                "x-requested-with": "XMLHttpRequest",
-                "x-web-device-id": "90775CD2-2724-4FFE-8282-74A3B47BED05"
-            }
+                # Capture 'clips/user/' requests made by the browser
+                for request in driver.requests:
+                    if 'clips/user/' in request.url and request.response:
+                        try:
+                            response_data = request.response.body.decode('utf-8')
+                            captured_requests.append(json.loads(response_data))
+                        except Exception as e:
+                            print("Error decoding response:", e)
 
-            max_id = None
+            driver.quit()
+
+            # Process captured requests if any
             reels = []
-
-            # Main loop for fetching reels
-            while len(reels) < target_reel_count:
-                body_data = f"include_feed_video=true&page_size=12&target_user_id={user_id}"
-                if max_id:
-                    body_data += f"&max_id={max_id}"
-
-                # Convert headers to curl format
-                curl_headers = [f"-H '{key}: {value}'" for key, value in headers.items()]
-
-                # Rotate to the next proxy for the request
-                next_proxy = proxies[(proxies.index(proxy_host) + 1) % len(proxies)]
-
-                # Prepare the curl command with the next proxy
-                curl_command = [
-                    "curl", "-X", "POST", reels_url,
-                    "-x", f"http://{next_proxy}:{proxy_port}",
-                    *curl_headers,
-                    "-b", cookie_str.strip("; "),
-                    "--data", body_data
-                ]
-
-                # Print command for debugging
-                print("Executing CURL:", " ".join(curl_command))
-
-                # Execute the curl command
-                result = subprocess.run(curl_command, capture_output=True, text=True)
-                
-                # Check response
-                if result.returncode == 0:
-                    try:
-                        reels_data = json.loads(result.stdout)
-                        items = reels_data.get("items", [])
-                        paging_info = reels_data.get("paging_info", {})
-
-                        for item in items:
-                            media = item.get("media", {})
-                            play_count = media.get("play_count")
-                            code = media.get("code")
-                            reels.append({"link": f"https://www.instagram.com/reel/{code}/", "viewcount": play_count})
-
-                            if len(reels) >= target_reel_count:
-                                break
-
-                        max_id = paging_info.get("max_id")
-                        if not max_id:
-                            break
-                    except json.JSONDecodeError as e:
-                        print("Error decoding JSON response:", e)
-                        print("Response:", result.stdout)
-                        raise Exception("Failed to decode JSON response")
-                else:
-                    print("CURL command failed. Response:", result.stderr)
-                    raise Exception("CURL command failed")
+            for data in captured_requests:
+                items = data.get("items", [])
+                for item in items:
+                    media = item.get("media", {})
+                    play_count = media.get("play_count")
+                    code = media.get("code")
+                    reels.append({"link": f"https://www.instagram.com/reel/{code}/", "viewcount": play_count})
 
             reels.sort(key=lambda x: x["viewcount"] if x["viewcount"] is not None else 0, reverse=True)
-            driver.quit()
-            return reels[:target_reel_count]  # Return only up to the target count if successful
+            return reels[:scroll_count] if reels else None
 
         except Exception as e:
             print(f"Error with proxy {proxy_host}: {e}")
@@ -175,7 +112,6 @@ def get_reels_data(reel_username, target_reel_count=100):
 
     print("All proxies failed.")
     return None
-
 @app.route('/scrape_reels', methods=['POST'])
 def scrape_reels():
     data = request.json
