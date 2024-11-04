@@ -1,8 +1,9 @@
 from flask import Flask, request, jsonify
 import traceback 
-import undetected_chromedriver as uc
+from seleniumwire.undetected_chromedriver.v2 import Chrome, ChromeOptions
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.options import Options
+# from selenium.webdriver.chrome.options import Options
+from seleniumwire.utils import decode as sw_decode
 import time
 import requests
 import json
@@ -15,7 +16,7 @@ app = Flask(__name__)
 
 # List of proxy IPs to cycle through
 proxies = [
-    "5.78.64.26",
+    # "5.78.64.26",
     "5.161.202.98",
     "45.250.255.245",
     "103.88.235.25",
@@ -26,11 +27,13 @@ proxies = [
 proxy_port = "823"  # Assuming all proxies use the same port
 
 def initialize_driver(proxy_host):
-    chrome_options = Options()
+    chrome_options = ChromeOptions()
     # chrome_options.add_argument("--headless=new") 
     chrome_options.add_argument("--start-maximized")
+    chrome_options.add_argument("--ignore-certificate-errors")
+    chrome_options.add_argument("--allow-insecure-localhost")
     chrome_options.add_argument(f'--proxy-server={proxy_host}:{proxy_port}')
-    driver = uc.Chrome(options=chrome_options)
+    driver = Chrome(options=chrome_options)
     print(f"Initialized driver with proxy: {proxy_host}:{proxy_port}")
     return driver
 
@@ -47,14 +50,21 @@ def close_dialog(driver):
 
 def capture_user_requests():
     requests_data = []
-    for request in driver.requests:
+    for idx, request in enumerate(driver.requests):
         if 'clips/user/' in request.url and request.response:
             # Ensure the request matches the desired URL and has a response
             try:
+                # Try decoding as UTF-8 first
                 response_data = request.response.body.decode('utf-8')
+                # print(response_data)
                 requests_data.append(response_data)
-            except Exception as e:
-                print("Error decoding response:", e)
+            except UnicodeDecodeError:
+                print(f"Error decoding as UTF-8 for request {idx}. Saving raw response to file.")
+                # Save the raw binary data to a file for inspection
+                raw_file_path = f"raw_response_{idx}.bin"
+                with open(raw_file_path, "wb") as raw_file:
+                    raw_file.write(request.response.body)
+                print(f"Raw response saved to {raw_file_path}")
     return requests_data
 def get_reels_data(reel_username, scroll_count=20):
     for proxy_host in proxies:
@@ -66,27 +76,36 @@ def get_reels_data(reel_username, scroll_count=20):
 
             close_dialog(driver)
             time.sleep(2)
-
-            # Scroll and capture requests
             captured_requests = []
             action = ActionChains(driver)
 
             for _ in range(scroll_count):
                 # Scroll down
                 driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                time.sleep(3)
+                time.sleep(7)
 
                 # Check for dialog again in case it reappears
                 close_dialog(driver)
+                 # Scroll and capture requests
+
+
 
                 # Capture 'clips/user/' requests made by the browser
-                for request in driver.requests:
+                for idx, request in enumerate(driver.requests):
                     if 'clips/user/' in request.url and request.response:
                         try:
-                            response_data = request.response.body.decode('utf-8')
+                            # Attempt to decode as UTF-8
+                            data = sw_decode(request.response.body, request.response.headers.get('Content-Encoding', 'identity'))
+                            response_data = data.decode('utf-8')
+                            # print (response_data)
                             captured_requests.append(json.loads(response_data))
-                        except Exception as e:
-                            print("Error decoding response:", e)
+                        except UnicodeDecodeError as e:
+                            print(f"Error decoding response for request {idx}: {e}")
+                            # Save the raw binary data to a file for inspection
+                            raw_file_path = f"raw_response_{idx}.bin"
+                            with open(raw_file_path, "wb") as raw_file:
+                                raw_file.write(request.response.body)
+                            print(f"Raw response saved to {raw_file_path}")
 
             driver.quit()
 
@@ -113,6 +132,8 @@ def get_reels_data(reel_username, scroll_count=20):
 
     print("All proxies failed.")
     return None
+
+
 @app.route('/scrape_reels', methods=['POST'])
 def scrape_reels():
     data = request.json
