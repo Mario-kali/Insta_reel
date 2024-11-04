@@ -46,7 +46,7 @@ def get_dynamic_headers(driver, csrf_token):
         "sec-ch-ua-full-version-list": f"\"{user_agent}\"",
         "sec-ch-ua-mobile": "?0",
         "sec-ch-ua-model": "\"\"",
-        "sec-ch-ua-platform": f"\"{sec_platform}\"",
+        "sec-ch-ua-platform": "darwin",
         "sec-fetch-dest": "empty",
         "sec-fetch-mode": "cors",
         "sec-fetch-site": "same-origin",
@@ -120,6 +120,15 @@ def get_reels_data(reel_username, target_reel_count=100):
                 print("=======================")
                 response = session.post(reels_url, headers=headers, data=body)
                 print (response.status_code, response.json())
+                # Retry with exponential backoff if rate-limited
+                if response.status_code != 200:
+                    for i in range(1, 4):  # Retry 3 times
+                        print(f"Retrying in {2 ** i} seconds...")
+                        time.sleep(2 ** i)
+                        response = session.post(reels_url, headers=headers, data=body)
+                        print (response.status_code, response.json())
+                        if response.status_code == 200:
+                            break
                 if response.status_code == 200:
                     reels_data = response.json()
                     items = reels_data.get("items", [])
