@@ -69,6 +69,10 @@ def get_reels_data(reel_username, target_reel_count=100):
 
             cookies = driver.get_cookies()
             session = requests.Session()
+            session.proxies = {
+                "http": f"http://{proxy_host}:{proxy_port}",
+                "https": f"http://{proxy_host}:{proxy_port}"
+            }
             csrf_token = None
             for cookie in cookies:
                 session.cookies.set(cookie['name'], cookie['value'])
@@ -165,6 +169,7 @@ def get_reels_data(reel_username, target_reel_count=100):
 
     print("All proxies failed.")
     return None
+
 @app.route('/scrape_reels', methods=['POST'])
 def scrape_reels():
     data = request.json
