@@ -110,7 +110,14 @@ def get_reels_data(reel_username, target_reel_count=100):
                 }
                 if max_id:
                     body["max_id"] = max_id
-
+                 # Print the entire request for debugging
+                print("=== Request Details ===")
+                print("URL:", reels_url)
+                print("Headers:", headers)
+                print("Cookies:", session.cookies.get_dict())
+                print("Body:", body)
+                print("Proxy in use:", proxy_host)
+                print("=======================")
                 response = session.post(reels_url, headers=headers, data=body)
                 print (response.status_code, response.json())
                 if response.status_code == 200:
