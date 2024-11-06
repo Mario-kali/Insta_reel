@@ -48,24 +48,22 @@ def close_dialog(driver):
         print("Close button not found. Attempting to click outside the dialog.")
         driver.execute_script("document.body.click();")
 
-def capture_user_requests():
+def capture_user_requests(driver):
     requests_data = []
-    for idx, request in enumerate(driver.requests):
-        if 'clips/user/' in request.url and request.response:
-            # Ensure the request matches the desired URL and has a response
-            try:
-                # Try decoding as UTF-8 first
-                response_data = request.response.body.decode('utf-8')
-                # print(response_data)
-                requests_data.append(response_data)
-            except UnicodeDecodeError:
-                print(f"Error decoding as UTF-8 for request {idx}. Saving raw response to file.")
-                # Save the raw binary data to a file for inspection
-                raw_file_path = f"raw_response_{idx}.bin"
-                with open(raw_file_path, "wb") as raw_file:
-                    raw_file.write(request.response.body)
-                print(f"Raw response saved to {raw_file_path}")
+    
+    # Get all requests
+    network_events = driver.execute_cdp_cmd("Network.getAllCookies", {})
+    
+    for event in network_events:
+        if "request" in event and "url" in event["request"]:
+            request_url = event["request"]["url"]
+            if "clips/user/" in request_url:
+                print("Captured request URL:", request_url)
+                requests_data.append(request_url)
+    
     return requests_data
+
+    
 def get_reels_data(reel_username, scroll_count=20):
     for proxy_host in proxies:
         driver = initialize_driver(proxy_host)
