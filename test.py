@@ -5,7 +5,7 @@ import threading
 app = Flask(__name__)
 
 # Zapier webhook URL
-zapier_url = "https://hooks.zapier.com/hooks/catch/xxxxxx/yyyyyy"  # Replace with actual Zapier URL
+zapier_url = "https://hooks.zapier.com/hooks/catch/17969384/29cd3cy/"  # Replace with actual Zapier URL
 
 # Hardcoded response data
 hardcoded_response = {
