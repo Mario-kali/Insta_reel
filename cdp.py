@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import requests
+import json
 
 app = Flask(__name__)
 
@@ -11,7 +12,7 @@ def run_apify_actor(reel_username):
     url = f"https://api.apify.com/v2/acts/hpix~ig-reels-scraper/run-sync-get-dataset-items?token={APIFY_TOKEN}"
     
     payload = {
-        "reels_count": 50,
+        "reels_count": 3,
         "tags": [reel_username]
     }
 
@@ -22,6 +23,9 @@ def run_apify_actor(reel_username):
 
     if response.status_code == 200 or response.status_code == 201:
         print("Scraper ran successfully.")
+        # print ("response: ", response.content)
+        data = json.loads(response.content.decode('utf-8'))
+        print("Response: ",data)
         return response.json()  # Contains dataset items (top reels)
     else:
         print("Error running Scraper:", response.status_code, response.text)
@@ -72,21 +76,16 @@ def scrape_reels():
     # Run the Apify actor and get results
     result = run_apify_actor(reel_username)
 
-    if result:
-        # Format response for Zapier
-        formatted_result = format_response_for_zapier(result, list_name)
-        
-        # Send formatted result to Zapier
-        zapier_response = requests.post(ZAPIER_WEBHOOK_URL, json=formatted_result)
-        if zapier_response.status_code == 200:
-            print("Data sent to Zapier successfully.")
-        else:
-            print("Error sending data to Zapier:", zapier_response.status_code, zapier_response.text)
-
-        # Return formatted response directly
-        return jsonify(formatted_result)
-    else:
-        return jsonify({"error": "Failed to run Apify actor"}), 500
+    # if result:
+    #     formatted_result = format_response_for_zapier(result, list_name)
+    #     zapier_response = requests.post(ZAPIER_WEBHOOK_URL, json=formatted_result)
+    #     if zapier_response.status_code == 200:
+    #         print("Data sent to Zapier successfully.")
+    #     else:
+    #         print("Error sending data to Zapier:", zapier_response.status_code, zapier_response.text)
+    #     return jsonify(formatted_result)
+    # else:
+    #     return jsonify({"error": "Failed to run Apify actor"}), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001)
