@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import requests
 from apify_client import ApifyClient
+import threading
 
 app = Flask(__name__)
 
@@ -47,6 +48,17 @@ def format_response_for_zapier(data, list_name):
 
     return formatted_response
 
+def process_reels_in_background(reel_username, list_name):
+    result = run_insta_scraper(reel_username)
+    if result:
+        formatted_result = format_response_for_zapier(result, list_name)
+        zapier_response = requests.post(ZAPIER_WEBHOOK_URL, json=formatted_result)
+        print (formatted_result)
+        if zapier_response.status_code == 200:
+            print("Data sent to Zapier successfully.")
+        else:
+            print("Error sending data to Zapier:", zapier_response.status_code, zapier_response.text)
+
 @app.route('/scrape_reels', methods=['POST'])
 def scrape_reels():
     data = request.json
@@ -56,18 +68,11 @@ def scrape_reels():
     if not reel_username or not list_name:
         return jsonify({"error": "Missing 'reel_username' or 'listName'"}), 400
 
-    result = run_insta_scraper(reel_username)
+    # Start background thread for processing
+    threading.Thread(target=process_reels_in_background, args=(reel_username, list_name)).start()
 
-    if result:
-        formatted_result = format_response_for_zapier(result, list_name)
-        zapier_response = requests.post(ZAPIER_WEBHOOK_URL, json=formatted_result)
-        if zapier_response.status_code == 200:
-            print("Data sent to Zapier successfully.")
-        else:
-            print("Error sending data to Zapier:", zapier_response.status_code, zapier_response.text)
-        return jsonify(formatted_result)
-    else:
-        return jsonify({"error": "Failed to run Scraper"}), 500
+    # Immediately respond with 200 OK
+    return jsonify({"status": "Processing started"}), 200
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001)
