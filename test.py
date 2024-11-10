@@ -9,6 +9,8 @@ app = Flask(__name__)
 Insta_Token = "apify_api_qI26br3ucdk1JtCdJozAVBEbBFhfqM3M5E3N"
 ZAPIER_WEBHOOK_URL = os.getenv("ZAPIER_WEBHOOK_URL")
 
+print ("ZAPIER URL: ", ZAPIER_WEBHOOK_URL)
+
 def run_insta_scraper(reel_username):
     client = ApifyClient(Insta_Token)
     
