@@ -2,11 +2,12 @@ from flask import Flask, request, jsonify
 import requests
 from apify_client import ApifyClient
 import threading
+import os
 
 app = Flask(__name__)
 
 Insta_Token = "apify_api_qI26br3ucdk1JtCdJozAVBEbBFhfqM3M5E3N"
-ZAPIER_WEBHOOK_URL = "https://hooks.zapier.com/hooks/catch/17969384/29cd3cy/"
+ZAPIER_WEBHOOK_URL = os.getenv("ZAPIER_WEBHOOK_URL")
 
 def run_insta_scraper(reel_username):
     client = ApifyClient(Insta_Token)
