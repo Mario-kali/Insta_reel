@@ -12,14 +12,14 @@ ZAPIER_WEBHOOK_URL = os.getenv("ZAPIER_WEBHOOK_URL")
 
 print("ZAPIER URL: ", ZAPIER_WEBHOOK_URL)
 
-
 def calculate_reels_count(timeframe):
     """
     Calculate the number of reels to fetch based on the timeframe.
     """
     now = datetime.now()
     try:
-        timeframe_date = datetime.strptime(timeframe, "%d/%m/%Y")
+        # Parse the ISO 8601 format timeframe
+        timeframe_date = datetime.strptime(timeframe, "%Y-%m-%dT%H:%M:%S.%fZ")
         delta = (now.year - timeframe_date.year) * 12 + (now.month - timeframe_date.month)
 
         if delta <= 1:
@@ -31,9 +31,8 @@ def calculate_reels_count(timeframe):
         else:
             return 700
     except ValueError:
-        print("Invalid timeframe format. Expected format is 'day/month/year'.")
+        print("Invalid timeframe format. Expected ISO 8601 format.")
         return None
-
 
 def run_insta_scraper(reel_username, reels_count):
     client = ApifyClient(Insta_Token)
@@ -55,7 +54,6 @@ def run_insta_scraper(reel_username, reels_count):
         print("Error running Insta Scraper:", str(e))
         return None
 
-
 def format_response_for_zapier(data, list_name):
     reels = []
     for item in data:
@@ -76,7 +74,6 @@ def format_response_for_zapier(data, list_name):
 
     return formatted_response
 
-
 def process_reels_in_background(reel_username, list_name, timeframe):
     reels_count = calculate_reels_count(timeframe)
     if reels_count is None:
@@ -93,13 +90,12 @@ def process_reels_in_background(reel_username, list_name, timeframe):
         else:
             print("Error sending data to Zapier:", zapier_response.status_code, zapier_response.text)
 
-
 @app.route('/scrape_reels', methods=['POST'])
 def scrape_reels():
     data = request.json
     reel_username = data.get("reel_username")
     list_name = data.get("listName")
-    timeframe = data.get("timeframe")  # Expected in "day/month/year" format
+    timeframe = data.get("timeframe")  # Expected in ISO 8601 format
 
     if not reel_username or not list_name or not timeframe:
         return jsonify({"error": "Missing 'reel_username', 'listName', or 'timeframe'"}), 400
@@ -109,7 +105,6 @@ def scrape_reels():
 
     # Immediately respond with 200 OK
     return jsonify({"status": "Processing started"}), 200
-
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=5001)
